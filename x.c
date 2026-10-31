@@ -193,6 +193,7 @@ static void usage(void);
 static void (*handler[LASTEvent])(XEvent *) = {
 	[KeyPress] = kpress,
 	[ClientMessage] = cmessage,
+	/*
 	[ConfigureNotify] = resize,
 	[VisibilityNotify] = visibility,
 	[UnmapNotify] = unmap,
@@ -202,18 +203,10 @@ static void (*handler[LASTEvent])(XEvent *) = {
 	[MotionNotify] = bmotion,
 	[ButtonPress] = bpress,
 	[ButtonRelease] = brelease,
-/*
- * Uncomment if you want the selection to disappear when you select something
- * different in another window.
- */
-/*	[SelectionClear] = selclear_, */
 	[SelectionNotify] = selnotify,
-/*
- * PropertyNotify is only turned on when there is some INCR transfer happening
- * for the selection retrieval.
- */
 	[PropertyNotify] = propnotify,
 	[SelectionRequest] = selrequest,
+	*/
 };
 
 /* Globals */

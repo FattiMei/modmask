@@ -20,3 +20,32 @@ In the initialization function, `ximopen(Display*)` is called.
 It opens an input manager with `XOpenIM(Display*,...)` with the comment "input methods".
 Removing this function doesn't alter the terminal functionality.
 
+### Event handling
+```c
+while (XPending(xw.dpy)) {
+      XNextEvent(xw.dpy, &ev);
+      
+      if (XFilterEvent(&ev, None)) continue;
+      
+      if (handler[ev.type]) (handler[ev.type])(&ev);
+}
+```
+
+Here is a list of events supported by `st`:
+  * **KeyPress**: keyboard presses
+  * **ClientMessage**: window close is a client message
+  * **ConfigureNotify**: window resizing
+  * **VisibilityNotify**
+  * **UnmapNotify**
+  * **Expose**
+  * **FocusIn**
+  * **FocusOut**
+  * **MotionNotify**
+  * **ButtonPress**: mouse related
+  * **ButtonRelease**
+  * **SelectionNotify**: clipboard related
+  * **PropertyNotify**
+  * **SelectionRequest**
+
+I don't know what `XFilterEvent` does.
+
