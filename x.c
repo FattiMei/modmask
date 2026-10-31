@@ -14,6 +14,7 @@
 #include <X11/keysym.h>
 #include <X11/Xft/Xft.h>
 #include <X11/XKBlib.h>
+#include <assert.h>
 
 char *argv0;
 #include "arg.h"
@@ -1195,10 +1196,13 @@ xinit(int cols, int rows)
 	xw.draw = XftDrawCreate(xw.dpy, xw.buf, xw.vis, xw.cmap);
 
 	/* input methods */
+	#if 0
 	if (!ximopen(xw.dpy)) {
+	  assert(0);
 		XRegisterIMInstantiateCallback(xw.dpy, NULL, NULL, NULL,
 	                                       ximinstantiate, NULL);
 	}
+	#endif
 
 	/* white cursor, black outline */
 	cursor = XCreateFontCursor(xw.dpy, mouseshape);

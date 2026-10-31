@@ -8,3 +8,15 @@ The program must detect key presses and print which modifiers keys have been pre
 ## Motivation
 The dwm window manager makes heavy use of the ALT key (referenced in the source code as `Mod1Mask`).
 Since also emacs competes for that key, I wanted to change it to something else, but I don't know the exact keycodes.
+
+
+# Log
+In the `x.c` source:
+  * `xinit()` creates a display, window and manages the fonts
+  * `run()` contains the event loop. `handler` maps event types to functions
+
+### XIM (X Input Manager?)
+In the initialization function, `ximopen(Display*)` is called.
+It opens an input manager with `XOpenIM(Display*,...)` with the comment "input methods".
+Removing this function doesn't alter the terminal functionality.
+
