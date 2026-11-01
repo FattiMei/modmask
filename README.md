@@ -24,9 +24,9 @@ Removing this function doesn't alter the terminal functionality.
 ```c
 while (XPending(xw.dpy)) {
       XNextEvent(xw.dpy, &ev);
-      
+
       if (XFilterEvent(&ev, None)) continue;
-      
+
       if (handler[ev.type]) (handler[ev.type])(&ev);
 }
 ```
@@ -47,5 +47,5 @@ Here is a list of events supported by `st`:
   * **PropertyNotify**
   * **SelectionRequest**
 
-I don't know what `XFilterEvent` does.
+Unknown API: `XFilterEvent`, `XFlush`
 

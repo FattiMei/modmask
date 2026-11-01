@@ -193,7 +193,6 @@ static void usage(void);
 static void (*handler[LASTEvent])(XEvent *) = {
 	[KeyPress] = kpress,
 	[ClientMessage] = cmessage,
-	/*
 	[ConfigureNotify] = resize,
 	[VisibilityNotify] = visibility,
 	[UnmapNotify] = unmap,
@@ -206,7 +205,6 @@ static void (*handler[LASTEvent])(XEvent *) = {
 	[SelectionNotify] = selnotify,
 	[PropertyNotify] = propnotify,
 	[SelectionRequest] = selrequest,
-	*/
 };
 
 /* Globals */
@@ -2100,7 +2098,28 @@ run:
 	xinit(cols, rows);
 	xsetenv();
 	selinit();
-	run();
+
+	int quit = 0;
+	while (!quit) {
+		XEvent ev;
+		while (XPending(xw.dpy)) {
+			XNextEvent(xw.dpy, &ev);
+			if (XFilterEvent(&ev, None)) continue;
+
+			switch (ev.type) {
+				case KeyPress:
+					printf("KeyPress\n");
+					break;
+				case ClientMessage:
+					if (ev.xclient.data.l[0] == xw.wmdeletewin) {
+						quit = 1;
+					}
+					break;
+			}
+		}
+
+		XFlush(xw.dpy);
+	}
 
 	return 0;
 }

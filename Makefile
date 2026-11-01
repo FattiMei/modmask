@@ -9,6 +9,9 @@ OBJ = $(SRC:.c=.o)
 
 all: st
 
+run: st
+	./st
+
 config.h:
 	cp config.def.h config.h
 
