@@ -60,3 +60,6 @@ Here are some solutions:
 (1) requires non trivial tooling. I could work on:
   * the AST with libclang and python bindings
   * LLVM IR with debug information
+
+I found that clang doesn't emit the IR for functions that are unused, the same functions we want to detect.
+In the case I can't find a simpler reproducible example, use the version control.

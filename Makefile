@@ -4,6 +4,7 @@ include config.mk
 
 SRC = st.c x.c
 OBJ = $(SRC:.c=.o)
+CLANG = clang-19
 
 all: st
 
@@ -17,7 +18,7 @@ st: $(OBJ)
 	$(CC) -o $@ $(OBJ) $(STLDFLAGS)
 
 x.ll: x.c arg.h config.h st.h win.h
-	$(CLANG) -S -emit-llvm -g -O0 -o $@ $< $(STLDFLAGS)
+	$(CLANG) -g -S -emit-llvm -o $@ $< $(STCFLAGS)
 
 callgraph.o: tools/callgraph.cpp
 	$(CXX) -c -I /usr/include/llvm-19 -I /usr/include/llvm-c-19 $^ -o $@
