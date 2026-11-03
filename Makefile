@@ -1,5 +1,3 @@
-# st - simple terminal
-# See LICENSE file for copyright and license details.
 .POSIX:
 
 include config.mk
@@ -9,49 +7,23 @@ OBJ = $(SRC:.c=.o)
 
 all: st
 
-run: st
-	./st
-
-config.h:
-	cp config.def.h config.h
-
 .c.o:
 	$(CC) $(STCFLAGS) -c $<
 
 st.o: config.h st.h win.h
 x.o: arg.h config.h st.h win.h
 
-x.ll:
-	clang-19 -g -S -emit-llvm x.c $(STCFLAGS) -o $@
-
-$(OBJ): config.h config.mk
-
 st: $(OBJ)
 	$(CC) -o $@ $(OBJ) $(STLDFLAGS)
 
-clean:
-	rm -f st $(OBJ) st-$(VERSION).tar.gz
+x.ll: x.c arg.h config.h st.h win.h
+	$(CLANG) -S -emit-llvm -g -O0 -o $@ $< $(STLDFLAGS)
 
-dist: clean
-	mkdir -p st-$(VERSION)
-	cp -R FAQ LEGACY TODO LICENSE Makefile README config.mk\
-		config.def.h st.info st.1 arg.h st.h win.h $(SRC)\
-		st-$(VERSION)
-	tar -cf - st-$(VERSION) | gzip > st-$(VERSION).tar.gz
-	rm -rf st-$(VERSION)
+callgraph.o: tools/callgraph.cpp
+	$(CXX) -c -I /usr/include/llvm-19 -I /usr/include/llvm-c-19 $^ -o $@
 
-install: st
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp -f st $(DESTDIR)$(PREFIX)/bin
-	chmod 755 $(DESTDIR)$(PREFIX)/bin/st
-	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
-	sed "s/VERSION/$(VERSION)/g" < st.1 > $(DESTDIR)$(MANPREFIX)/man1/st.1
-	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/st.1
-	tic -sx st.info
-	@echo Please see the README file regarding the terminfo entry of st.
+callgraph: callgraph.o
+	$(CXX) $^ -L /usr/lib/llvm-19/lib `llvm-config-19 --libs` -o $@
 
-uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/st
-	rm -f $(DESTDIR)$(MANPREFIX)/man1/st.1
-
-.PHONY: all clean dist install uninstall
+unreachable: callgraph x.ll
+	./callgraph x.ll

@@ -1,18 +1,17 @@
 #include <set>
 #include <stack>
-#include <cassert>
-#include <iostream>
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
 int main(int argc, char* argv[]) {
 	if (argc != 2) {
-		std::cerr << "Usage: callgraph input.ll\n";
+		errs() << "Usage: callgraph input.ll\n";
 		return 1;
 	}
 
@@ -29,7 +28,7 @@ int main(int argc, char* argv[]) {
 
 	Function* main = mod->getFunction("main");
 	if (main == NULL) {
-		std::cout << "Could not find main (entry point)... quitting\n";
+		outs() << "Could not find main (entry point)... quitting\n";
 		return 1;
 	}
 
@@ -62,18 +61,16 @@ int main(int argc, char* argv[]) {
 
 	for (Function &F : *mod) {
 		if ((not F.empty()) and (reached.count(&F) == 0)) {
-			const std::string function_name = F.getName().str();
+			StringRef function_name = F.getName();
 			DISubprogram* prg = F.getSubprogram();
 
 			if (prg != NULL) {
-				const std::string filename = prg->getFilename().str();
-
-				std::cout << filename               // name of file
-				          << ":" << prg->getLine()  // line number
-				          << ":0: ";                // column number
+				outs() << prg->getFilename()     // name of file
+				       << ":" << prg->getLine()  // line number
+				       << ":0: ";                // column number
 			}
 
-			std::cout << "`" << function_name << "` is unreachable from `main`\n";
+			outs() << "`" << function_name << "` is unreachable from `main`\n";
 		}
 	}
 
