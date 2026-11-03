@@ -61,5 +61,5 @@ Here are some solutions:
   * the AST with libclang and python bindings
   * LLVM IR with debug information
 
-I found that clang doesn't emit the IR for functions that are unused, the same functions we want to detect.
-In the case I can't find a simpler reproducible example, use the version control.
+I found that when emitting LLVM IR, unused static functions won't show up in the IR.
+
