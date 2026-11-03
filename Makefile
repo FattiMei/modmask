@@ -21,6 +21,9 @@ config.h:
 st.o: config.h st.h win.h
 x.o: arg.h config.h st.h win.h
 
+x.ll:
+	clang-19 -g -S -emit-llvm x.c $(STCFLAGS) -o $@
+
 $(OBJ): config.h config.mk
 
 st: $(OBJ)
