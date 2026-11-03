@@ -4,6 +4,7 @@
 #include <iostream>
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
 
@@ -61,10 +62,21 @@ int main(int argc, char* argv[]) {
 
 	for (Function &F : *mod) {
 		if ((not F.empty()) and (reached.count(&F) == 0)) {
-			// print the source code location of the function definition
-			std::cout << "Please remove " << F.getName().str() << std::endl;
+			const std::string function_name = F.getName().str();
+			DISubprogram* prg = F.getSubprogram();
+
+			if (prg != NULL) {
+				const std::string filename = prg->getFilename().str();
+
+				std::cout << filename               // name of file
+				          << ":" << prg->getLine()  // line number
+				          << ":0: ";                // column number
+			}
+
+			std::cout << "`" << function_name << "` is unreachable from `main`\n";
 		}
 	}
 
 	return 0;
 }
+
