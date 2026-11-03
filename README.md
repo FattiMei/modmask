@@ -49,3 +49,14 @@ Here is a list of events supported by `st`:
 
 Unknown API: `XFilterEvent`, `XFlush`
 
+### Removal of uncalled functions
+> A function is uncalled if it's unreachable in the call graph starting from `main`*
+(\*) except for calls via function pointers.
+
+Here are some solutions:
+  1. build the function call graph and compute unreachable nodes
+  2. use the `-Wunused-function` warning
+
+(1) requires non trivial tooling. I could work on:
+  * the AST with libclang and python bindings
+  * LLVM IR with debug information
