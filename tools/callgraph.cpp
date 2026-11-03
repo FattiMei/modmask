@@ -37,6 +37,17 @@ int main(int argc, char* argv[]) {
 	queue.push(main);
 	reached.insert(main);
 
+	// when functions have their address taken, we must make the conservative assumption
+	// that they will be called.
+	//
+	// we add those functions as starting points in the graph reachability algorithm
+	for (Function &F : *mod) {
+		if (F.hasAddressTaken()) {
+			queue.push(&F);
+			reached.insert(&F);
+		}
+	}
+
 	while (not queue.empty()) {
 		Function* f = queue.top();
 		queue.pop();
@@ -60,7 +71,10 @@ int main(int argc, char* argv[]) {
 	}
 
 	for (Function &F : *mod) {
-		if ((not F.empty()) and (reached.count(&F) == 0)) {
+		const bool is_not_empty = not F.empty();
+		const bool unreachable = reached.count(&F) == 0;
+
+		if (is_not_empty and unreachable) {
 			StringRef function_name = F.getName();
 			DISubprogram* prg = F.getSubprogram();
 
