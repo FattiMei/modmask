@@ -1,5 +1,5 @@
 st
 callgraph
-x.ll
 *.o
+*.ll
 build/
