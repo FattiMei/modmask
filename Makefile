@@ -6,9 +6,12 @@ include config.mk
 
 # this should be obtained with the program `llvm-config --version`
 # I should use awk to recover the version, but I'll wait for a CMake build
+# LLVM_VERSION = `llvm-config --version | cut -d . -f 1`
 LLVM_VERSION = 20
 CLANG = clang-$(LLVM_VERSION)
-LLC = llc-$(LLVM_VERSION)
+LLVM = llvm-$(LLVM_VERSION)
+LLVM_C = llvm-c-$(LLVM_VERSION)
+LLVM_CONFIG = llvm-config-$(LLVM_VERSION)
 
 
 SRC = st.c x.c
@@ -18,7 +21,7 @@ IR = $(SRC:.c=.ll)
 all: st
 
 
-st.ll: x.c arg.h config.h st.h win.h
+st.ll: st.c arg.h config.h st.h win.h
 	$(CLANG) -g -S -emit-llvm $(INCS) $(STCPPFLAGS) -o $@ $<
 
 
@@ -26,24 +29,12 @@ x.ll: x.c config.h st.h win.h
 	$(CLANG) -g -S -emit-llvm $(INCS) $(STCPPFLAGS) -o $@ $<
 
 
-st.o: st.ll
-	$(LLC) $<
-
-
-x.o: x.ll
-	$(LLC) $<
-
-
-st: $(IR)
+st: st.ll x.ll
 	$(CLANG) -o $@ $^ $(STLDFLAGS)
 
 
-callgraph.o: tools/callgraph.cpp
-	$(CXX) -c -I /usr/include/llvm-$(LLVM_VERSION) -I /usr/include/llvm-c-$(LLVM_VERSION) $^ -o $@
-
-
 callgraph: tools/callgraph.cpp
-	$(CXX) -I /usr/include/llvm-$(LLVM_VERSION) -I /usr/include/llvm-c-$(LLVM_VERSION) $^ -L /usr/lib/llvm-$(LLVM_VERSION)/lib `llvm-config-$(LLVM_VERSION) --libs` -o $@
+	$(CXX) -I /usr/include/$(LLVM) -I /usr/include/$(LLVM_C) $^ -L /usr/lib/$(LLVM)/lib `$(LLVM_CONFIG) --libs` -o $@
 
 
 unreachable: callgraph x.ll st.ll

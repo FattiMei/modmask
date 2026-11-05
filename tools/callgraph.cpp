@@ -4,29 +4,49 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IRReader/IRReader.h"
+#include "llvm/Linker/Linker.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
 int main(int argc, char* argv[]) {
-	if (argc != 2) {
-		errs() << "Usage: callgraph input.ll\n";
+	if (argc < 2) {
+		errs() << "Usage: callgraph input.ll...\n";
 		return 1;
 	}
 
 	LLVMContext Context;
 	SMDiagnostic Err;
 
-	// at this stage, there should be no errors, but we should examine Err
-	std::unique_ptr<Module> mod = parseIRFile(argv[1], Err, Context);
+	Module mod("base", Context);
+
+	for (int i = 1; i < argc; ++i) {
+		// at this stage, there should be no errors, but we should examine Err
+		std::unique_ptr<Module> submod = parseIRFile(argv[i], Err, Context);
+
+		// these submodules are linked into the main module,
+		// so the reachability analysis is global
+		// yes, it will be costly but I need it
+		bool err = Linker::linkModules(
+			mod,
+			std::move(submod),
+			Linker::Flags::OverrideFromSrc
+		);
+		if (err) {
+			// I need to get causes of errors here
+			errs() << "There was a problem with linking\n";
+
+			return 1;
+		}
+	}
 
 	// I need pointers to Function to be stored in an ordered container like std::map
 	// but iterating on a module only gives you references to Function...
 	// turns out we can take pointer to references!
 	std::set<Function*> reached;
 
-	Function* main = mod->getFunction("main");
+	Function* main = mod.getFunction("main");
 	if (main == NULL) {
 		outs() << "Could not find main (entry point)... quitting\n";
 		return 1;
@@ -41,7 +61,7 @@ int main(int argc, char* argv[]) {
 	// that they will be called.
 	//
 	// we add those functions as starting points in the graph reachability algorithm
-	for (Function &F : *mod) {
+	for (Function &F : mod) {
 		if (F.hasAddressTaken()) {
 			queue.push(&F);
 			reached.insert(&F);
@@ -70,11 +90,12 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	for (Function &F : *mod) {
+	for (Function &F : mod) {
 		const bool is_not_empty = not F.empty();
 		const bool unreachable = reached.count(&F) == 0;
+		const bool has_address_taken = F.hasAddressTaken();
 
-		if (is_not_empty and unreachable) {
+		if (is_not_empty and unreachable and (not has_address_taken)) {
 			StringRef function_name = F.getName();
 			DISubprogram* prg = F.getSubprogram();
 
