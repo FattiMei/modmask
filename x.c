@@ -390,152 +390,6 @@ xgeommasktogravity(int mask)
 	return SouthEastGravity;
 }
 
-int
-xloadfont(Font *f, FcPattern *pattern)
-{
-	FcPattern *configured;
-	FcPattern *match;
-	FcResult result;
-	XGlyphInfo extents;
-	int wantattr, haveattr;
-
-	/*
-	 * Manually configure instead of calling XftMatchFont
-	 * so that we can use the configured pattern for
-	 * "missing glyph" lookups.
-	 */
-	configured = FcPatternDuplicate(pattern);
-	if (!configured)
-		return 1;
-
-	FcConfigSubstitute(NULL, configured, FcMatchPattern);
-	XftDefaultSubstitute(xw.dpy, xw.scr, configured);
-
-	match = FcFontMatch(NULL, configured, &result);
-	if (!match) {
-		FcPatternDestroy(configured);
-		return 1;
-	}
-
-	if (!(f->match = XftFontOpenPattern(xw.dpy, match))) {
-		FcPatternDestroy(configured);
-		FcPatternDestroy(match);
-		return 1;
-	}
-
-	if ((XftPatternGetInteger(pattern, "slant", 0, &wantattr) ==
-	    XftResultMatch)) {
-		/*
-		 * Check if xft was unable to find a font with the appropriate
-		 * slant but gave us one anyway. Try to mitigate.
-		 */
-		if ((XftPatternGetInteger(f->match->pattern, "slant", 0,
-		    &haveattr) != XftResultMatch) || haveattr < wantattr) {
-			f->badslant = 1;
-			fputs("font slant does not match\n", stderr);
-		}
-	}
-
-	if ((XftPatternGetInteger(pattern, "weight", 0, &wantattr) ==
-	    XftResultMatch)) {
-		if ((XftPatternGetInteger(f->match->pattern, "weight", 0,
-		    &haveattr) != XftResultMatch) || haveattr != wantattr) {
-			f->badweight = 1;
-			fputs("font weight does not match\n", stderr);
-		}
-	}
-
-	XftTextExtentsUtf8(xw.dpy, f->match,
-		(const FcChar8 *) ascii_printable,
-		strlen(ascii_printable), &extents);
-
-	f->set = NULL;
-	f->pattern = configured;
-
-	f->ascent = f->match->ascent;
-	f->descent = f->match->descent;
-	f->lbearing = 0;
-	f->rbearing = f->match->max_advance_width;
-
-	f->height = f->ascent + f->descent;
-	f->width = DIVCEIL(extents.xOff, strlen(ascii_printable));
-
-	return 0;
-}
-
-void
-xloadfonts(const char *fontstr, double fontsize)
-{
-	FcPattern *pattern;
-	double fontval;
-
-	if (fontstr[0] == '-')
-		pattern = XftXlfdParse(fontstr, False, False);
-	else
-		pattern = FcNameParse((const FcChar8 *)fontstr);
-
-	if (!pattern)
-		die("can't open font %s\n", fontstr);
-
-	if (fontsize > 1) {
-		FcPatternDel(pattern, FC_PIXEL_SIZE);
-		FcPatternDel(pattern, FC_SIZE);
-		FcPatternAddDouble(pattern, FC_PIXEL_SIZE, (double)fontsize);
-		usedfontsize = fontsize;
-	} else {
-		if (FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &fontval) ==
-				FcResultMatch) {
-			usedfontsize = fontval;
-		} else if (FcPatternGetDouble(pattern, FC_SIZE, 0, &fontval) ==
-				FcResultMatch) {
-			usedfontsize = -1;
-		} else {
-			/*
-			 * Default font size is 12, if none given. This is to
-			 * have a known usedfontsize value.
-			 */
-			FcPatternAddDouble(pattern, FC_PIXEL_SIZE, 12);
-			usedfontsize = 12;
-		}
-		defaultfontsize = usedfontsize;
-	}
-
-	if (xloadfont(&dc.font, pattern))
-		die("can't open font %s\n", fontstr);
-
-	if (usedfontsize < 0) {
-		FcPatternGetDouble(dc.font.match->pattern,
-		                   FC_PIXEL_SIZE, 0, &fontval);
-		usedfontsize = fontval;
-		if (fontsize == 0)
-			defaultfontsize = fontval;
-	}
-
-	/* Setting character width and height. */
-	win.cw = ceilf(dc.font.width * cwscale);
-	win.ch = ceilf(dc.font.height * chscale);
-
-	FcPatternDel(pattern, FC_SLANT);
-	FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ITALIC);
-	if (xloadfont(&dc.ifont, pattern))
-		die("can't open font %s\n", fontstr);
-
-	FcPatternDel(pattern, FC_WEIGHT);
-	FcPatternAddInteger(pattern, FC_WEIGHT, FC_WEIGHT_BOLD);
-	if (xloadfont(&dc.ibfont, pattern))
-		die("can't open font %s\n", fontstr);
-
-	FcPatternDel(pattern, FC_SLANT);
-	FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ROMAN);
-	if (xloadfont(&dc.bfont, pattern))
-		die("can't open font %s\n", fontstr);
-
-	FcPatternDestroy(pattern);
-}
-
-
-
-
 
 int
 ximopen(Display *dpy)
@@ -696,14 +550,6 @@ main(int argc, char *argv[])
 	xw.scr = XDefaultScreen(xw.dpy);
 	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
 
-	/* font */
-	if (!FcInit())
-		die("could not init fontconfig.\n");
-
-	// This is the place where the font is loaded
-	usedfont = (opt_font == NULL)? font : opt_font;
-	xloadfonts(usedfont, 0);
-
 	/* colors */
 	xw.cmap = XDefaultColormap(xw.dpy, xw.scr);
 	xloadcols();
@@ -743,9 +589,6 @@ main(int argc, char *argv[])
 			DefaultDepth(xw.dpy, xw.scr));
 	XSetForeground(xw.dpy, dc.gc, dc.col[defaultbg].pixel);
 	XFillRectangle(xw.dpy, xw.buf, dc.gc, 0, 0, win.w, win.h);
-
-	/* font spec buffer */
-	xw.specbuf = xmalloc(cols * sizeof(GlyphFontSpec));
 
 	/* Xft rendering context */
 	xw.draw = XftDrawCreate(xw.dpy, xw.buf, xw.vis, xw.cmap);
