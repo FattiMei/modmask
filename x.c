@@ -591,9 +591,100 @@ xicdestroy(XIC xim, XPointer client, XPointer call)
 	return 1;
 }
 
+
 void
-xinit(int cols, int rows)
+xsettitle(char *p)
 {
+	XTextProperty prop;
+	DEFAULT(p, opt_title);
+
+	if (p[0] == '\0')
+		p = opt_title;
+
+	if (Xutf8TextListToTextProperty(xw.dpy, &p, 1, XUTF8StringStyle,
+	                                &prop) != Success)
+		return;
+	XSetWMName(xw.dpy, xw.win, &prop);
+	XSetTextProperty(xw.dpy, xw.win, &prop, xw.netwmname);
+	XFree(prop.value);
+}
+
+
+#if 0
+void
+kpress(XEvent *ev)
+{
+	XKeyEvent *e = &ev->xkey;
+	KeySym ksym = NoSymbol;
+	char buf[64], *customkey;
+	int len;
+	Rune c;
+	Status status;
+	Shortcut *bp;
+
+	if (IS_SET(MODE_KBDLOCK))
+		return;
+
+	if (xw.ime.xic) {
+		len = XmbLookupString(xw.ime.xic, e, buf, sizeof buf, &ksym, &status);
+		if (status == XBufferOverflow)
+			return;
+	} else {
+		len = XLookupString(e, buf, sizeof buf, &ksym, NULL);
+	}
+	/* 1. shortcuts */
+	for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
+		if (ksym == bp->keysym && match(bp->mod, e->state)) {
+			bp->func(&(bp->arg));
+			return;
+		}
+	}
+
+	/* 2. custom keys from config.h */
+	if ((customkey = kmap(ksym, e->state))) {
+		ttywrite(customkey, strlen(customkey), 1);
+		return;
+	}
+
+	/* 3. composed string from input method */
+	if (len == 0)
+		return;
+	if (len == 1 && e->state & Mod1Mask) {
+		if (IS_SET(MODE_8BIT)) {
+			if (*buf < 0177) {
+				c = *buf | 0x80;
+				len = utf8encode(c, buf);
+			}
+		} else {
+			buf[1] = buf[0];
+			buf[0] = '\033';
+			len = 2;
+		}
+	}
+	ttywrite(buf, len, 1);
+}
+#endif
+
+
+
+
+int
+main(int argc, char *argv[])
+{
+	xw.l = xw.t = 0;
+	xw.isfixed = False;
+
+	if (argc > 0) /* eat all remaining arguments */
+		opt_cmd = argv;
+
+	if (!opt_title)
+		opt_title = (opt_line || !opt_cmd) ? "st" : opt_cmd[0];
+
+	cols = MAX(cols, 1);
+	rows = MAX(rows, 1);
+
+	// now it only remains the initialization process to be understood
+	// this is the body of xinit()
 	XGCValues gcvalues;
 	Cursor cursor;
 	Window parent, root;
@@ -658,16 +749,6 @@ xinit(int cols, int rows)
 
 	/* Xft rendering context */
 	xw.draw = XftDrawCreate(xw.dpy, xw.buf, xw.vis, xw.cmap);
-
-	/* input methods */
-	#if 0
-	if (!ximopen(xw.dpy)) {
-	  assert(0);
-		XRegisterIMInstantiateCallback(xw.dpy, NULL, NULL, NULL,
-	                                       ximinstantiate, NULL);
-	}
-	#endif
-
 	/* white cursor, black outline */
 	cursor = XCreateFontCursor(xw.dpy, mouseshape);
 	XDefineCursor(xw.dpy, xw.win, cursor);
@@ -709,205 +790,8 @@ xinit(int cols, int rows)
 	xsel.xtarget = XInternAtom(xw.dpy, "UTF8_STRING", 0);
 	if (xsel.xtarget == None)
 		xsel.xtarget = XA_STRING;
-}
 
-
-
-
-
-
-
-
-
-void
-xsetenv(void)
-{
-	char buf[sizeof(long) * 8 + 1];
-
-	snprintf(buf, sizeof(buf), "%lu", xw.win);
-	setenv("WINDOWID", buf, 1);
-}
-
-
-
-void
-xsettitle(char *p)
-{
-	XTextProperty prop;
-	DEFAULT(p, opt_title);
-
-	if (p[0] == '\0')
-		p = opt_title;
-
-	if (Xutf8TextListToTextProperty(xw.dpy, &p, 1, XUTF8StringStyle,
-	                                &prop) != Success)
-		return;
-	XSetWMName(xw.dpy, xw.win, &prop);
-	XSetTextProperty(xw.dpy, xw.win, &prop, xw.netwmname);
-	XFree(prop.value);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-int
-xsetcursor(int cursor)
-{
-	if (!BETWEEN(cursor, 0, 7)) /* 7: st extension */
-		return 1;
-	win.cursor = cursor;
-	return 0;
-}
-
-
-
-
-
-#if 0
-void
-kpress(XEvent *ev)
-{
-	XKeyEvent *e = &ev->xkey;
-	KeySym ksym = NoSymbol;
-	char buf[64], *customkey;
-	int len;
-	Rune c;
-	Status status;
-	Shortcut *bp;
-
-	if (IS_SET(MODE_KBDLOCK))
-		return;
-
-	if (xw.ime.xic) {
-		len = XmbLookupString(xw.ime.xic, e, buf, sizeof buf, &ksym, &status);
-		if (status == XBufferOverflow)
-			return;
-	} else {
-		len = XLookupString(e, buf, sizeof buf, &ksym, NULL);
-	}
-	/* 1. shortcuts */
-	for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
-		if (ksym == bp->keysym && match(bp->mod, e->state)) {
-			bp->func(&(bp->arg));
-			return;
-		}
-	}
-
-	/* 2. custom keys from config.h */
-	if ((customkey = kmap(ksym, e->state))) {
-		ttywrite(customkey, strlen(customkey), 1);
-		return;
-	}
-
-	/* 3. composed string from input method */
-	if (len == 0)
-		return;
-	if (len == 1 && e->state & Mod1Mask) {
-		if (IS_SET(MODE_8BIT)) {
-			if (*buf < 0177) {
-				c = *buf | 0x80;
-				len = utf8encode(c, buf);
-			}
-		} else {
-			buf[1] = buf[0];
-			buf[0] = '\033';
-			len = 2;
-		}
-	}
-	ttywrite(buf, len, 1);
-}
-#endif
-
-
-void
-usage(void)
-{
-	die("usage: %s [-aiv] [-c class] [-f font] [-g geometry]"
-	    " [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid]"
-	    " [[-e] command [args ...]]\n"
-	    "       %s [-aiv] [-c class] [-f font] [-g geometry]"
-	    " [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid] -l line"
-	    " [stty_args ...]\n", argv0, argv0);
-}
-
-int
-main(int argc, char *argv[])
-{
-	xw.l = xw.t = 0;
-	xw.isfixed = False;
-	xsetcursor(cursorshape);
-
-	ARGBEGIN {
-	case 'a':
-		allowaltscreen = 0;
-		break;
-	case 'c':
-		opt_class = EARGF(usage());
-		break;
-	case 'e':
-		if (argc > 0)
-			--argc, ++argv;
-		goto run;
-	case 'f':
-		opt_font = EARGF(usage());
-		break;
-	case 'g':
-		xw.gm = XParseGeometry(EARGF(usage()),
-				&xw.l, &xw.t, &cols, &rows);
-		break;
-	case 'i':
-		xw.isfixed = 1;
-		break;
-	case 'o':
-		opt_io = EARGF(usage());
-		break;
-	case 'l':
-		opt_line = EARGF(usage());
-		break;
-	case 'n':
-		opt_name = EARGF(usage());
-		break;
-	case 't':
-	case 'T':
-		opt_title = EARGF(usage());
-		break;
-	case 'w':
-		opt_embed = EARGF(usage());
-		break;
-	case 'v':
-		die("%s " VERSION "\n", argv0);
-		break;
-	default:
-		usage();
-	} ARGEND;
-
-run:
-	if (argc > 0) /* eat all remaining arguments */
-		opt_cmd = argv;
-
-	if (!opt_title)
-		opt_title = (opt_line || !opt_cmd) ? "st" : opt_cmd[0];
-
-	setlocale(LC_CTYPE, "");
-	XSetLocaleModifiers("");
-	cols = MAX(cols, 1);
-	rows = MAX(rows, 1);
-	tnew(cols, rows);
-	xinit(cols, rows);
-	xsetenv();
-	selinit();
+	// end of xinit body
 
 	int quit = 0;
 	while (!quit) {

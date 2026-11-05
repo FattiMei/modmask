@@ -245,14 +245,6 @@ xmalloc(size_t len)
 	return p;
 }
 
-void *
-xrealloc(void *p, size_t len)
-{
-	if ((p = realloc(p, len)) == NULL)
-		die("realloc: %s\n", strerror(errno));
-
-	return p;
-}
 
 
 
@@ -270,47 +262,20 @@ xrealloc(void *p, size_t len)
 
 
 
-void
-selinit(void)
-{
-	sel.mode = SEL_IDLE;
-	sel.snap = 0;
-	sel.ob.x = -1;
-}
 
 
 
 
 
-int
-selected(int x, int y)
-{
-	if (sel.mode == SEL_EMPTY || sel.ob.x == -1 ||
-			sel.alt != IS_SET(MODE_ALTSCREEN))
-		return 0;
-
-	if (sel.type == SEL_RECTANGULAR)
-		return BETWEEN(y, sel.nb.y, sel.ne.y)
-		    && BETWEEN(x, sel.nb.x, sel.ne.x);
-
-	return BETWEEN(y, sel.nb.y, sel.ne.y)
-	    && (y != sel.nb.y || x >= sel.nb.x)
-	    && (y != sel.ne.y || x <= sel.ne.x);
-}
 
 
 
 
 
-void
-selclear(void)
-{
-	if (sel.ob.x == -1)
-		return;
-	sel.mode = SEL_IDLE;
-	sel.ob.x = -1;
-	tsetdirt(sel.nb.y, sel.ne.y);
-}
+
+
+
+
 
 void
 die(const char *errstr, ...)
@@ -353,87 +318,17 @@ sigchld(int a)
 
 
 
-void
-tsetdirt(int top, int bot)
-{
-	int i;
 
-	if (term.row <= 0)
-		return;
 
-	LIMIT(top, 0, term.row-1);
-	LIMIT(bot, 0, term.row-1);
 
-	for (i = top; i <= bot; i++)
-		term.dirty[i] = 1;
-}
 
-void
-tfulldirt(void)
-{
-	tsetdirt(0, term.row-1);
-}
 
-void
-tcursor(int mode)
-{
-	static TCursor c[2];
-	int alt = IS_SET(MODE_ALTSCREEN);
 
-	if (mode == CURSOR_SAVE) {
-		c[alt] = term.c;
-	} else if (mode == CURSOR_LOAD) {
-		term.c = c[alt];
-		tmoveto(c[alt].x, c[alt].y);
-	}
-}
 
-void
-treset(void)
-{
-	uint i;
 
-	term.c = (TCursor){{
-		.mode = ATTR_NULL,
-		.fg = defaultfg,
-		.bg = defaultbg
-	}, .x = 0, .y = 0, .state = CURSOR_DEFAULT};
 
-	memset(term.tabs, 0, term.col * sizeof(*term.tabs));
-	for (i = tabspaces; i < term.col; i += tabspaces)
-		term.tabs[i] = 1;
-	term.top = 0;
-	term.bot = term.row - 1;
-	term.mode = MODE_WRAP|MODE_UTF8;
-	memset(term.trantbl, CS_USA, sizeof(term.trantbl));
-	term.charset = 0;
 
-	for (i = 0; i < 2; i++) {
-		tmoveto(0, 0);
-		tcursor(CURSOR_SAVE);
-		tclearregion(0, 0, term.col-1, term.row-1);
-		tswapscreen();
-	}
-}
 
-void
-tnew(int col, int row)
-{
-	term = (Term){ .c = { .attr = { .fg = defaultfg, .bg = defaultbg } } };
-	tresize(col, row);
-	treset();
-}
-
-void
-tswapscreen(void)
-{
-	Line *tmp = term.line;
-
-	term.line = term.alt;
-	term.alt = tmp;
-	term.mode ^= MODE_ALTSCREEN;
-	tfulldirt();
-}
 
 
 
@@ -448,54 +343,6 @@ tswapscreen(void)
 /* for absolute user moves, when decom is set */
 
 
-void
-tmoveto(int x, int y)
-{
-	int miny, maxy;
-
-	if (term.c.state & CURSOR_ORIGIN) {
-		miny = term.top;
-		maxy = term.bot;
-	} else {
-		miny = 0;
-		maxy = term.row - 1;
-	}
-	term.c.state &= ~CURSOR_WRAPNEXT;
-	term.c.x = LIMIT(x, 0, term.col-1);
-	term.c.y = LIMIT(y, miny, maxy);
-}
-
-
-
-void
-tclearregion(int x1, int y1, int x2, int y2)
-{
-	int x, y, temp;
-	Glyph *gp;
-
-	if (x1 > x2)
-		temp = x1, x1 = x2, x2 = temp;
-	if (y1 > y2)
-		temp = y1, y1 = y2, y2 = temp;
-
-	LIMIT(x1, 0, term.col-1);
-	LIMIT(x2, 0, term.col-1);
-	LIMIT(y1, 0, term.row-1);
-	LIMIT(y2, 0, term.row-1);
-
-	for (y = y1; y <= y2; y++) {
-		term.dirty[y] = 1;
-		for (x = x1; x <= x2; x++) {
-			gp = &term.line[y][x];
-			if (selected(x, y))
-				selclear();
-			gp->fg = term.c.attr.fg;
-			gp->bg = term.c.attr.bg;
-			gp->mode = 0;
-			gp->u = ' ';
-		}
-	}
-}
 
 
 
@@ -509,21 +356,12 @@ tclearregion(int x1, int y1, int x2, int y2)
 
 
 
-void
-tsetscroll(int t, int b)
-{
-	int temp;
 
-	LIMIT(t, 0, term.row-1);
-	LIMIT(b, 0, term.row-1);
-	if (t > b) {
-		temp = t;
-		t = b;
-		b = temp;
-	}
-	term.top = t;
-	term.bot = b;
-}
+
+
+
+
+
 
 
 
@@ -581,87 +419,7 @@ tsetscroll(int t, int b)
 
 
 
-void
-tresize(int col, int row)
-{
-	int i;
-	int minrow = MIN(row, term.row);
-	int mincol = MIN(col, term.col);
-	int *bp;
-	TCursor c;
 
-	if (col < 1 || row < 1) {
-		fprintf(stderr,
-		        "tresize: error resizing to %dx%d\n", col, row);
-		return;
-	}
-
-	/*
-	 * slide screen to keep cursor where we expect it -
-	 * tscrollup would work here, but we can optimize to
-	 * memmove because we're freeing the earlier lines
-	 */
-	for (i = 0; i <= term.c.y - row; i++) {
-		free(term.line[i]);
-		free(term.alt[i]);
-	}
-	/* ensure that both src and dst are not NULL */
-	if (i > 0) {
-		memmove(term.line, term.line + i, row * sizeof(Line));
-		memmove(term.alt, term.alt + i, row * sizeof(Line));
-	}
-	for (i += row; i < term.row; i++) {
-		free(term.line[i]);
-		free(term.alt[i]);
-	}
-
-	/* resize to new height */
-	term.line = xrealloc(term.line, row * sizeof(Line));
-	term.alt  = xrealloc(term.alt,  row * sizeof(Line));
-	term.dirty = xrealloc(term.dirty, row * sizeof(*term.dirty));
-	term.tabs = xrealloc(term.tabs, col * sizeof(*term.tabs));
-
-	/* resize each row to new width, zero-pad if needed */
-	for (i = 0; i < minrow; i++) {
-		term.line[i] = xrealloc(term.line[i], col * sizeof(Glyph));
-		term.alt[i]  = xrealloc(term.alt[i],  col * sizeof(Glyph));
-	}
-
-	/* allocate any new rows */
-	for (/* i = minrow */; i < row; i++) {
-		term.line[i] = xmalloc(col * sizeof(Glyph));
-		term.alt[i] = xmalloc(col * sizeof(Glyph));
-	}
-	if (col > term.col) {
-		bp = term.tabs + term.col;
-
-		memset(bp, 0, sizeof(*term.tabs) * (col - term.col));
-		while (--bp > term.tabs && !*bp)
-			/* nothing */ ;
-		for (bp += tabspaces; bp < term.tabs + col; bp += tabspaces)
-			*bp = 1;
-	}
-	/* update terminal size */
-	term.col = col;
-	term.row = row;
-	/* reset scrolling region */
-	tsetscroll(0, row-1);
-	/* make use of the LIMIT in tmoveto */
-	tmoveto(term.c.x, term.c.y);
-	/* Clearing both screens (it makes dirty all lines) */
-	c = term.c;
-	for (i = 0; i < 2; i++) {
-		if (mincol < col && 0 < minrow) {
-			tclearregion(mincol, 0, col - 1, minrow - 1);
-		}
-		if (0 < col && minrow < row) {
-			tclearregion(0, minrow, col - 1, row - 1);
-		}
-		tswapscreen();
-		tcursor(CURSOR_LOAD);
-	}
-	term.c = c;
-}
 
 void
 resettitle(void)
