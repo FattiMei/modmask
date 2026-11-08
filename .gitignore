@@ -1,4 +1,5 @@
 st
+simple
 callgraph
 *.o
 *.ll
