@@ -1,6 +1,2 @@
-st
-simple
-callgraph
-*.o
-*.ll
 build/
+

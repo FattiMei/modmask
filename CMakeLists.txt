@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
 project(modmask)
 
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "")
+find_package(X11 REQUIRED)
+add_executable(simple simple.c)
+target_link_libraries(simple PRIVATE X11::X11)
 
-# this produces the target `callgraph`, I need it for custom commands
+add_subdirectory(st)
 add_subdirectory(tools)
 
