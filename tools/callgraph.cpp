@@ -90,12 +90,14 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	bool at_least_one_function_to_print = false;
 	for (Function &F : mod) {
 		const bool is_not_empty = not F.empty();
 		const bool unreachable = reached.count(&F) == 0;
 		const bool has_address_taken = F.hasAddressTaken();
 
 		if (is_not_empty and unreachable and (not has_address_taken)) {
+			at_least_one_function_to_print = true;
 			StringRef function_name = F.getName();
 			DISubprogram* prg = F.getSubprogram();
 
@@ -107,6 +109,10 @@ int main(int argc, char* argv[]) {
 
 			outs() << "`" << function_name << "` is unreachable from `main`\n";
 		}
+	}
+
+	if (not at_least_one_function_to_print) {
+		outs() << "Every function is reachable\n";
 	}
 
 	return 0;
