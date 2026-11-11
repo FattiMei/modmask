@@ -6,4 +6,8 @@ add_executable(simple simple.c)
 target_link_libraries(simple PRIVATE X11::X11)
 
 add_subdirectory(st)
+add_subdirectory(tools)
+
+add_analysis(unreachable simple)
+add_analysis(foo st_minimal)
 
