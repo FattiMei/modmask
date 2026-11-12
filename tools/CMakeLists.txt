@@ -44,12 +44,11 @@ function(add_analysis analysis_name target)
 		# I still have problems about paths
 		get_filename_component(absolute_path ${src} ABSOLUTE)
 		get_filename_component(name_we ${absolute_path} NAME_WE)
-		message(STATUS "src absolute path: ${absolute_path}")
 		set(output_ir_file "${ir_dir}/${name_we}.ll")
 
 		add_custom_command(
 			OUTPUT ${output_ir_file}
-			COMMAND ${clang} -S -emit-llvm ${includes} ${definitions} -o ${output_ir_file} ${absolute_path}
+			COMMAND ${clang} -g -S -emit-llvm ${includes} ${definitions} -o ${output_ir_file} ${absolute_path}
 			COMMAND_EXPAND_LISTS
 			VERBATIM
 			DEPENDS ${absolute_path}
