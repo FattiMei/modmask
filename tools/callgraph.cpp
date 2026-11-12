@@ -1,5 +1,6 @@
 #include <set>
 #include <stack>
+#include "llvm/ADT/Twine.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/DebugInfoMetadata.h"
@@ -102,7 +103,14 @@ int main(int argc, char* argv[]) {
 			DISubprogram* prg = F.getSubprogram();
 
 			if (prg != NULL) {
-				outs() << prg->getFilename()     // name of file
+				DIFile* file = prg->getFile();
+
+				if (file == NULL) {
+					assert(false);
+				}
+				Twine abs_path = Twine(file->getDirectory()).concat("/") .concat(file->getFilename());
+
+				outs() << abs_path               // name of file
 				       << ":" << prg->getLine()  // line number
 				       << ":0: ";                // column number
 			}

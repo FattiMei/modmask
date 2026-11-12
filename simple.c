@@ -58,7 +58,9 @@ int main(void) {
 			PRINT_MASK_COMPONENT(Mod5Mask);
 			printf("\n");
 
-			if (kev->keycode == 24 && kev->state == 0) {
+			// I check only for the press of the `q` key and not for state modifiers
+			// because on some machines a modmask key may be always pressed
+			if (kev->keycode == 24) {
 				break;
 			}
 		} else if (e.type == KeyRelease) {
